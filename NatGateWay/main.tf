@@ -1,3 +1,6 @@
+provider "aws"{
+region = var.region
+}
 # Elastic IPs for NAT Gateways
 resource "aws_eip" "nat_eips" {
   count = length(var.public_subnet_ids)
