@@ -1,1 +1,2 @@
 We can create public subnets and attach those to internet gateway but for private subnet we need to attach them to NatGateway.
+Here in example i have created the terraform code for subnet only.
