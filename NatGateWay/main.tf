@@ -1,35 +1,32 @@
-provider "aws" "test"{
-region = "ap-south-1"
-}
-resource "aws_eip" "ngw_elesticip_1" {}
-
-resource "aws_nat_gateway" "nat_gateway" {
-  allocation_id = aws_eip.ngw_elesticip_1.id
-  subnet_id     = aws_subnet.public_subnet_1.id  
-}
-resource "aws_route_table" "private_rt_1" {
-  vpc_id = aws_vpc.test.id
-}
-resource "aws_route" "private_ngw_route" {
-  route_table_id         = aws_route_table.private_rt_1.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.nat_gateway.id
-}
-resource "aws_route_table_association" "private_assoc" {
-  subnet_id      = aws_subnet.private_subnet_1.id
-  route_table_id = aws_route_table.private_rt_1.id
+# Elastic IPs for NAT Gateways
+resource "aws_eip" "nat_eips" {
+  count = length(var.public_subnet_ids)
 }
 
-resource "aws_eip" "ngw_elesticip_2" {}
-resource "aws_nat_gateway" "nat_gateway" {
-  allocation_id = aws_eip.ngw_elesticip_2.id
-  subnet_id     = aws_subnet.public_subnet_2.id  
+# NAT Gateways
+resource "aws_nat_gateway" "nat_gateways" {
+  count         = length(var.public_subnet_ids)
+  allocation_id = aws_eip.nat_eips[count.index].id
+  subnet_id     = var.public_subnet_ids[count.index]
 }
-resource "aws_route_table" "private_rt_2" {
-  vpc_id = aws_vpc.test.id
+
+# Private Route Tables
+resource "aws_route_table" "private_rts" {
+  count  = length(var.private_subnet_ids)
+  vpc_id = var.vpc_id
 }
-resource "aws_route" "private_ngw_route" {
-  route_table_id         = aws_route_table.private_rt_2.id
+
+# Routes for Private Subnets
+resource "aws_route" "private_routes" {
+  count                  = length(var.private_subnet_ids)
+  route_table_id         = aws_route_table.private_rts[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.nat_gateway.id
+  nat_gateway_id         = aws_nat_gateway.nat_gateways[count.index].id
+}
+
+# Associate Private Subnets with Route Tables
+resource "aws_route_table_association" "private_assocs" {
+  count         = length(var.private_subnet_ids)
+  subnet_id     = var.private_subnet_ids[count.index]
+  route_table_id = aws_route_table.private_rts[count.index].id
 }
